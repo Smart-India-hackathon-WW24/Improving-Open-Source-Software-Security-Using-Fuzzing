@@ -1,23 +1,33 @@
-// scripts.js
+// Enhanced scripts.js for real-time updates
+
 document.addEventListener("DOMContentLoaded", function() {
-    // Fetch crash log data
+    const crashTable = document.getElementById("crash-table").getElementsByTagName('tbody')[0];
+    const totalCrashes = document.getElementById("total-crashes");
+    const codeCoverage = document.getElementById("code-coverage");
+    
+    // Fetch and display crash log data
     fetch("/api/crashes")
         .then(response => response.json())
         .then(data => {
-            const crashLog = document.getElementById("crash-log");
+            totalCrashes.innerText = data.length;
             data.forEach(crash => {
-                const listItem = document.createElement("li");
-                listItem.textContent = `Severity: ${crash.severity} - Error: ${crash.error}`;
-                crashLog.appendChild(listItem);
+                const row = crashTable.insertRow();
+                row.insertCell(0).textContent = crash.timestamp;
+                row.insertCell(1).textContent = crash.severity;
+                row.insertCell(2).textContent = crash.error;
             });
         });
 
-    // Fetch coverage data
+    // Fetch and display code coverage data
     fetch("/api/coverage")
         .then(response => response.json())
         .then(data => {
-            const ctx = document.getElementById("coverage-chart").getContext("2d");
-            new Chart(ctx, {
+            const coveragePercent = calculateCoverage(data);
+            codeCoverage.innerText = `${coveragePercent}%`;
+
+            // Coverage chart
+            const ctxCoverage = document.getElementById("coverage-chart").getContext("2d");
+            new Chart(ctxCoverage, {
                 type: 'doughnut',
                 data: {
                     labels: Object.keys(data),
@@ -29,4 +39,28 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             });
         });
+
+    // Fetch and display severity distribution chart
+    fetch("/api/severity-distribution")
+        .then(response => response.json())
+        .then(data => {
+            const ctxSeverity = document.getElementById("severity-chart").getContext("2d");
+            new Chart(ctxSeverity, {
+                type: 'pie',
+                data: {
+                    labels: ["High", "Medium", "Low"],
+                    datasets: [{
+                        data: [data.high, data.medium, data.low],
+                        backgroundColor: ['#e74a3b', '#f6c23e', '#1cc88a'],
+                    }]
+                }
+            });
+        });
+
+    function calculateCoverage(data) {
+        let totalCoverage = 0;
+        let totalFunctions = Object.keys(data).length;
+        Object.values(data).forEach(coverage => totalCoverage += coverage);
+        return ((totalCoverage / totalFunctions) * 100).toFixed(2);
+    }
 });
